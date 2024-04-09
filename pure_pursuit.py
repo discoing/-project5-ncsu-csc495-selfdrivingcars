@@ -30,6 +30,10 @@ class Point:
     def getPoint(self):
         return self.x, self.y
     
+    def addConnection(self, other_point):
+        
+        
+    
 
 class Obstacle:
     def __init__(self, x, y, radius):
@@ -54,10 +58,18 @@ class PRM:
         self.end_point = self.x_end, self.y_end
         self.obstacles = obstacles
 
+    # Create connections
+    # Check if edge crosses between obstacle
+    
+        
+    # Find K nearest points
+        
+    
+    
 
 
-# Creates maps of random points 
-    def sample_points(self, point_count):
+    # Creates maps of random (non obstacle) points 
+    def create_map(self, point_count):
         self.map = []
         self.map.insert(0, *self.start_point)
         for _ in range(point_count):
@@ -68,13 +80,21 @@ class PRM:
                     break
                 
         return self.map
+    
+    # Euclidean distance of given point
+    def getDistance(self, other):
+        return math.hypot((self.x - other.x), (self.y - other.y))
 
-
-
+        
 
 
     # Checks if there is any obstacles at a given x,y coordinate
     def is_obstacle(self, point):
+        for obstacle in self.obstacles:
+            if obstacle.checkCollision(point):
+                return True
+        return False
 
-    # Checks if there is an obstacle between two x,y points
+
     def main(args=None):
+
