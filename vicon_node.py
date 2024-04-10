@@ -13,7 +13,7 @@ import tf2_ros
 VICON_TRACKER_IP = "wolfwagen-win01.csc.ncsu.edu"
 
 #####################
-OBJECT_NAME = "wolfwagen07"    # XY: your vehicle number
+OBJECT_NAME = "wolfwagen01"    # XY: your vehicle number
 #####################
 
 

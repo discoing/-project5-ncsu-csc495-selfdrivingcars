@@ -26,15 +26,18 @@ class Point:
     def __init__(self, x, y):
         self.x = x
         self.y = y
+        self.destination = []
     
     def getPoint(self):
         return self.x, self.y
     
     def addConnection(self, other_point):
-        
-        
-    
+        self.destination.append(other_point)
 
+    # Euclidean distance of given point
+    def getDistance(self, other):
+        return math.hypot((self.x - other.x), (self.y - other.y))
+    
 class Obstacle:
     def __init__(self, x, y, radius):
         self.x = x
@@ -48,53 +51,63 @@ class Obstacle:
             return True
         return False
     
-class PRM:
+    def checkCollisionLine(self, start, end):
+
+        return False
+    
+class PRM: # Probablistic Roadmap
 
     # List of points
     map: List[Point]
 
-    def __init__(self, start_point, end_point, obstacles):
-        self.start_point = self.x_start, self.y_start
-        self.end_point = self.x_end, self.y_end
+    def __init__(self, point_count, obstacles):
         self.obstacles = obstacles
-
-    # Create connections
-    # Check if edge crosses between obstacle
-    
-        
-    # Find K nearest points
-        
-    
-    
-
+        self.map = self.create_map(point_count)
+        self.temp_point = Point()
 
     # Creates maps of random (non obstacle) points 
     def create_map(self, point_count):
+        # Stage 1 : Random fill
         self.map = []
         self.map.insert(0, *self.start_point)
         for _ in range(point_count):
             while True:
                 x, y = int(random.uniform(0, MAP_SIZE)), int(random.uniform(0, MAP_SIZE))
-                if not self.is_obstacle((x,y)):
+                if not self.collidesWithObstacle((x,y)):
                     self.map.insert(len(self.map), x, y)
                     break
-                
+
+        # Stage 2 : Make connections
+        for start in self.map:
+            for dest in self.map:
+                if self.getDistance(start, dest) < 300 and self.canMakeConnection(start, dest):
+                    start.addConnection(dest)
+                    dest.addConnection(start)
+
         return self.map
-    
-    # Euclidean distance of given point
-    def getDistance(self, other):
-        return math.hypot((self.x - other.x), (self.y - other.y))
 
-        
-
+    def canMakeConnection(self, start, dest):
+        for obstacle in self.obstacles:
+            if obstacle.checkCollisionLine(start, dest):
+                return False
+        return True
 
     # Checks if there is any obstacles at a given x,y coordinate
-    def is_obstacle(self, point):
+    def collidesWithObstacle(self, point):
         for obstacle in self.obstacles:
             if obstacle.checkCollision(point):
                 return True
         return False
+    
+    # ONLINE
 
+    def makePathToPoint(point : Point):
+        # Do A*
+        
+        return # TODO
 
-    def main(args=None):
+def main(args=None):
+
+    road = PRM(TODO)
+    
 
