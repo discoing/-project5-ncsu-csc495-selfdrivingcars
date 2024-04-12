@@ -15,6 +15,7 @@ from matplotlib import pyplot as plt
 from std_msgs.msg import Int64
 from std_msgs.msg import Float32
 import time
+from geometry_msgs.msg import PoseStamped
 
 
 MAP_SIZE = 100
@@ -51,17 +52,31 @@ class Obstacle:
             return True
         return False
     
-    def checkCollisionLine(self, start, end):
+    def checkCollisionLine(self, start : Point, end : Point):
+        line_vector = (end.x - start.x, end.y - start.y)
 
-        return False
+        circle_to_start = (start.x - self.x, start.y - self.y)
+
+        dot_product = line_vector[0] * circle_to_start[0] + line_vector[1] * circle_to_start[1]
+
+        line_length_squared = line_vector[0]**2 + line_vector[1]**2
+
+        closest_distance_squared = (dot_product**2) / line_length_squared
+
+        if closest_distance_squared <= self.radius**2:
+            return True 
+        else:
+            return False
     
 class PRM: # Probablistic Roadmap
 
     # List of points
     map: List[Point]
 
-    def __init__(self, point_count, obstacles):
+    def __init__(self, point_count, obstacles, start_point):
+        self.distanceThreshold = 4
         self.obstacles = obstacles
+        self.start_point = start_point
         self.map = self.create_map(point_count)
         self.temp_point = Point()
 
@@ -69,7 +84,7 @@ class PRM: # Probablistic Roadmap
     def create_map(self, point_count):
         # Stage 1 : Random fill
         self.map = []
-        self.map.insert(0, *self.start_point)
+        self.map.insert(0, self.start_point)
         for _ in range(point_count):
             while True:
                 x, y = int(random.uniform(0, MAP_SIZE)), int(random.uniform(0, MAP_SIZE))
@@ -80,7 +95,7 @@ class PRM: # Probablistic Roadmap
         # Stage 2 : Make connections
         for start in self.map:
             for dest in self.map:
-                if self.getDistance(start, dest) < 300 and self.canMakeConnection(start, dest):
+                if self.getDistance(start, dest) < self.distanceThreshold and self.canMakeConnection(start, dest):
                     start.addConnection(dest)
                     dest.addConnection(start)
 
@@ -105,9 +120,33 @@ class PRM: # Probablistic Roadmap
         # Do A*
         
         return # TODO
+    
+last_pose : PoseStamped = None
+obstacles = [Obstacle(0, 0, 0.2), Obstacle(1, 2, 0.2), Obstacle(-1, -0.1, 0.2)]
+def updateVicon(data : PoseStamped):
+    global last_pose
+    last_pose = data
+    print(last_pose)
 
 def main(args=None):
+    rclpy.init(args=args)
 
-    road = PRM(TODO)
-    
+    node = Node("path_follower")
 
+    node.create_subscription(PoseStamped, VICON_TOPIC, updateVicon, 5)
+    thread = threading.Thread(target=rclpy.spin, args=(node, ), daemon=True)
+    thread.start()
+
+    rate = node.create_rate(20, node.get_clock())
+
+    rate.sleep() # Wait for topic data to stabalize
+    print("Waiting for VICON update")
+    while last_pose == None:
+        rate.sleep() # Wait for first pose
+    print("VICON update received")
+
+    road = PRM(100, obstacles, Point(last_pose.pose.position.x, last_pose.pose.position.y))
+    print("Finish building map")
+
+if __name__ == '__main__':
+    main()
