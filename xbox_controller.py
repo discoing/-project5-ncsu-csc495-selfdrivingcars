@@ -61,6 +61,9 @@ def lane_following_callback(data : Float32):
 		steering = data.data
 		steering = max(min(steering, 1.0), -1.0)
 
+def trasncript_callback(msg):
+	stdscr.addstr(4, 25, 'Transcription: ' + msg.data)
+	stdscr.refresh()
 
 #??
 def remap( val : float, lowerStart : float, upperStart : float, lowerEnd : float, upperEnd : float):
@@ -71,19 +74,12 @@ def main(args=None):
 	rclpy.init(args=args)
 	node = Node("xbox_controller_node")
 
-
-	## ------------
-	## YOUR CODE
-	# Subscribe to the 'joy' topic
-	# Create publishers for the manual_throttle and manual_steering commands
-	## ------------
-
 	node.create_subscription(Joy, "/joy", lambda data: joy_callback(data, recording_pub), 10)
 	node.create_subscription(Float32, "/cv_steer", lane_following_callback, 10)
+	node.create_subscription(String, '/transcript_topic', trasncript_callback, 10)
 	manual_pub = node.create_publisher(Int64, "/manual_throttle", 10)
 	manual_steering = node.create_publisher(Int64, "/manual_steering", 10)
 	recording_pub = node.create_publisher(String, "/recording_control", 10)
-
 
 	thread = threading.Thread(target=rclpy.spin, args=(node, ), daemon=True)
 	thread.start()
@@ -112,6 +108,7 @@ def main(args=None):
 			stdscr.addstr(1, 25, 'Xbox Controller       ')
 			stdscr.addstr(2, 25, 'Throttle: %.2f  ' % throttle)
 			stdscr.addstr(3, 25, 'Steering: %.2f  ' % steering)
+			
 
 			rate.sleep()
 		except KeyboardInterrupt:

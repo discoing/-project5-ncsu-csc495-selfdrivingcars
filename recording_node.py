@@ -1,5 +1,4 @@
 import pyaudio
-import whisper
 from faster_whisper import WhisperModel
 import rclpy
 from rclpy.node import Node
@@ -7,16 +6,16 @@ from std_msgs.msg import String
 import tempfile
 import wave
 import threading
-import subprocess
 import os
 
 class AudioRecordingNode(Node):
     def __init__(self):
         super().__init__('AudioRecordingNode')
         self.subscription = self.create_subscription(String, "/recording_control", self.recording_control_callback, 10)
+        self.transcript_publisher = self.create_publisher(String, 'transcript_topic', 10)
         self.is_recording = False
         self.frames = []
-        model_size = "base.en"
+        model_size = "small.en"
         model_str = f"ctranslate2-4you/whisper-{model_size}-ct2-int8"
         self.model = WhisperModel(model_str, device="cpu", compute_type="int8", cpu_threads=26)
         
@@ -43,7 +42,6 @@ class AudioRecordingNode(Node):
         finally:
             self.audio.terminate()
             self.get_logger().info('Recording stopped.')
-
     
     def save_recording(self):
         self.is_recording = False
@@ -55,23 +53,15 @@ class AudioRecordingNode(Node):
             wave_file.setframerate(44100)
             wave_file.writeframes(b"".join(self.frames))
             wave_file.close()
-        self.transcribe_prompt(temp)
+        self.publish_transcription(temp)
         os.remove(temp)
         self.frames.clear()
 
-    def transcribe_prompt(self, audio_prompt):
+    def publish_transcription(self, audio_prompt):
         chunks, _ = self.model.transcribe(audio_prompt)
         transcript = "/n".join([chunk.text for chunk in chunks])
+        self.transcript_publisher.publish(String(data=transcript))
         print(transcript)
-
-    # Makes sure that the mic index referenced is the correct device
-    def find_mic_index(self, mic):
-        num_devices = self.audio.get_device_count
-        for i in range(num_devices):
-            mic_info = self.audio.get_device_info_by_host_api_device_index(i)
-            if mic in mic_info.get('name'):
-                return i
-            raise Exception("Mic not found")
 
 def main(args=None):
     rclpy.init(args=args)
