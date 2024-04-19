@@ -18,13 +18,15 @@ MAX_MANUAL_THROTTLE_REVERSE = 20
 # Steering should be bounded between [-100, +100]
 
 is_manual = True
+is_recording = False
 
 steering = 0
 throttle = 0
 
 def joy_callback(data : Joy, recording_pub):
-	global steering, throttle, is_manual
+	global steering, throttle, is_manual, is_recording
 
+	# Y Button
 	if data.buttons[0]:
 		is_manual = not is_manual
 
@@ -43,9 +45,14 @@ def joy_callback(data : Joy, recording_pub):
 			else:
 				throttle += 0.01
 
+	# B Button
 	if data.buttons[1]:
-		recording_pub.publish(String(data="toggle"))
-		print
+		if not is_recording:
+			recording_pub.publish(String(data="start"))
+			is_recording = True
+		else:
+			recording_pub.publish(String(data="stop"))
+			is_recording = False
 
 
 def lane_following_callback(data : Float32):
