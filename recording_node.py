@@ -9,12 +9,12 @@ import os
 
 class AudioRecordingNode(Node):
     def __init__(self):
-        super().__init__('audio_recording_node')
+        super().__init__('AudioRecordingNode')
         self.subscription = self.create_subscription(String, "/recording_control", self.recording_control_callback, 10)
         self.is_recording = False
         self.frames = []
-        self.pyaudio_instance = pyaudio.PyAudio()
-        self.stream = self.pyaudio_instance.open(format=pyaudio.paInt16, channels=1, rate=44100, input=True, frames_per_buffer=1024)
+        self.audio = pyaudio.PyAudio()
+        self.stream = self.audio.open(format=pyaudio.paInt16, channels=1, rate=44100, input=True, frames_per_buffer=1024)
 
     def recording_control_callback(self, msg):
         if msg.data == "toggle":
@@ -40,13 +40,21 @@ class AudioRecordingNode(Node):
         # Save the recorded data as a WAV file
         wave_file = wave.open('file.wav', 'wb')
         wave_file.setnchannels(1)
-        wave_file.setsampwidth(self.pyaudio_instance.get_sample_size(pyaudio.paInt16))
+        wave_file.setsampwidth(self.audio.get_sample_size(pyaudio.paInt16))
         wave_file.setframerate(44100)
         wave_file.writeframes(b''.join(self.frames))
         wave_file.close()
-        # Optionally convert to MP3 (requires ffmpeg)
         subprocess.call(['ffmpeg', '-i', 'file.wav', 'file.mp3'])
         os.remove('file.wav')
+
+    # Makes sure that the mic index referenced is the correct device
+    def find_mic_index(self, mic):
+        num_devices = self.audio.get_device_count
+        for i in range(num_devices):
+            mic_info = self.audio.get_device_info_by_host_api_device_index(i)
+            if mic in mic_info.get('name'):
+                return i
+            raise Exception("Mic not found")
 
 def main(args=None):
     rclpy.init(args=args)
@@ -54,7 +62,7 @@ def main(args=None):
     rclpy.spin(node)
     node.stream.stop_stream()
     node.stream.close()
-    node.pyaudio_instance.terminate()
+    node.audio.terminate()
     node.destroy_node()
     rclpy.shutdown()
 

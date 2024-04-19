@@ -19,19 +19,18 @@ class transcribe_node(Node):
         self.get_logger().info('Published transcript: "%s"' % transcript)
 
     def transcribe_audio(self, file_path):
-        # Convert MP3 to WAV using pydub
         audio = AudioSegment.from_mp3(file_path)
         wav_path = file_path.replace(".mp3", ".wav")
         audio.export(wav_path, format="wav")
 
         # Load and transcribe using Whisper
         result = self.model.transcribe(wav_path)
-        os.remove(wav_path)  # Clean up WAV file
+        os.remove(wav_path) 
         return result["text"]
 
 def main(args=None):
     rclpy.init(args=args)
-    node = SpeechToTextNode()
+    node = transcribe_node()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
