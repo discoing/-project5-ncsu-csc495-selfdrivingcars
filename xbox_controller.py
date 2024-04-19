@@ -4,6 +4,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Int64
 from std_msgs.msg import Float32
+from std_msgs.msg import String
 import threading
 import curses
 
@@ -21,10 +22,12 @@ is_manual = True
 steering = 0
 throttle = 0
 
-def joy_callback(data : Joy):
+def joy_callback(data : Joy, recording_pub):
 	global steering, throttle, is_manual
+
 	if data.buttons[0]:
 		is_manual = not is_manual
+
 	if is_manual:
 		throttle = data.axes[1]
 		steering = data.axes[2]
@@ -39,6 +42,10 @@ def joy_callback(data : Joy):
 				throttle = 0.85
 			else:
 				throttle += 0.01
+
+	if data.buttons[1]:
+		recording_pub.publish(String(data="toggle"))
+		print
 
 
 def lane_following_callback(data : Float32):
@@ -64,10 +71,12 @@ def main(args=None):
 	# Create publishers for the manual_throttle and manual_steering commands
 	## ------------
 
-	node.create_subscription(Joy, "/joy", joy_callback, 10)
+	node.create_subscription(Joy, "/joy", lambda data: joy_callback(data, recording_pub), 10)
 	node.create_subscription(Float32, "/cv_steer", lane_following_callback, 10)
 	manual_pub = node.create_publisher(Int64, "/manual_throttle", 10)
 	manual_steering = node.create_publisher(Int64, "/manual_steering", 10)
+	recording_pub = node.create_publisher(String, "/recording_control", 10)
+
 
 	thread = threading.Thread(target=rclpy.spin, args=(node, ), daemon=True)
 	thread.start()
@@ -90,6 +99,7 @@ def main(args=None):
 			msg = Int64()
 			msg.data = remap(steering, 1.0, -1.0, -100, 100)
 			manual_steering.publish(msg)
+
 
 			stdscr.refresh()
 			stdscr.addstr(1, 25, 'Xbox Controller       ')

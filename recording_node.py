@@ -38,14 +38,12 @@ class AudioRecordingNode(Node):
         self.is_recording = False
         self.get_logger().info('Recording stopped.')
         # Save the recorded data as a WAV file
-        wave_file = wave.open('file.wav', 'wb')
+        wave_file = wave.open('prompt.wav', 'wb')
         wave_file.setnchannels(1)
         wave_file.setsampwidth(self.audio.get_sample_size(pyaudio.paInt16))
         wave_file.setframerate(44100)
         wave_file.writeframes(b''.join(self.frames))
         wave_file.close()
-        subprocess.call(['ffmpeg', '-i', 'file.wav', 'file.mp3'])
-        os.remove('file.wav')
 
     # Makes sure that the mic index referenced is the correct device
     def find_mic_index(self, mic):
