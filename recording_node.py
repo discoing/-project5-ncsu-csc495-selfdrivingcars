@@ -7,12 +7,14 @@ import tempfile
 import wave
 import threading
 import os
+import re
 
 class AudioRecordingNode(Node):
     def __init__(self):
         super().__init__('AudioRecordingNode')
         self.subscription = self.create_subscription(String, "/recording_control", self.recording_control_callback, 10)
-        self.transcript_publisher = self.create_publisher(String, 'transcript_topic', 10)
+        self.transcript_publisher = self.create_publisher(String, '/transcript_topic', 10)
+        self.location_publisher = self.create_publisher(String, '/location_topic', 10)
         self.is_recording = False
         self.frames = []
         model_size = "small.en"
@@ -57,11 +59,34 @@ class AudioRecordingNode(Node):
         os.remove(temp)
         self.frames.clear()
 
+    def get_command(self, transcript):
+        building_names = {
+            'EB1': ['Engineering Building 1', 'EB1', 'E B 1', 'EB 1', 'Evee 1', 'Evee 1' 'EV 1', 'EV1'],
+            'EB2': ['Engineering Building 2', 'EB2', 'E B 2', 'EB 2', 'Evee 2', 'Evee 2' 'EV 2', 'EV2'],
+            'EB3': ['Engineering Building 3', 'EB3', 'E B 3', 'EB 3', 'Evee 3', 'Evee 3', 'EV 3', 'EV3'],
+            'Textiles': ['Textiles Building', 'Textile', 'Textiles', 'Textile Building', 'Textile\'s'],
+            'Hunt': ['Hunt Library', 'Library', 'Hunt', 'Hunt\'s']
+        }
+    
+        variations = [re.escape(variation) for name in building_names for variation in building_names[name]]
+        pattern = r'\b(?:' + '|'.join(variations) + r')\b'
+        
+        # Search the transcript for the first occurrence of any building name
+        match = re.search(pattern, transcript, re.IGNORECASE)
+        if match:
+            found_variation = match.group(0)
+            for canonical, variations in building_names.items():
+                if found_variation.lower() in map(str.lower, variations):
+                    print(f"First mentioned building name found: {canonical}")
+                    self.location_publisher.publish(String(data=canonical))
+
     def publish_transcription(self, audio_prompt):
         chunks, _ = self.model.transcribe(audio_prompt)
         transcript = "/n".join([chunk.text for chunk in chunks])
         self.transcript_publisher.publish(String(data=transcript))
         print(transcript)
+        self.get_command(transcript)
+        
 
 def main(args=None):
     rclpy.init(args=args)

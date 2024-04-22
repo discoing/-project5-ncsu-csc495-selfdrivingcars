@@ -24,7 +24,7 @@ steering = 0
 throttle = 0
 
 def joy_callback(data : Joy, recording_pub):
-	global steering, throttle, is_manual, is_recording
+	global steering, throttle, is_manual, is_recording, location_topic
 
 	# Y Button
 	if data.buttons[0]:
@@ -54,9 +54,13 @@ def joy_callback(data : Joy, recording_pub):
 			recording_pub.publish(String(data="stop"))
 			is_recording = False
 
+	# X button
+	if data.buttons[3]:
+		location_topic.publish(String(data="eb1"))
+
 
 def lane_following_callback(data : Float32):
-	global is_manual, steering, throttle
+	global is_manual, steering
 	if is_manual == False:
 		steering = data.data
 		steering = max(min(steering, 1.0), -1.0)
@@ -69,17 +73,25 @@ def trasncript_callback(msg):
 def remap( val : float, lowerStart : float, upperStart : float, lowerEnd : float, upperEnd : float):
 	return int(((val - lowerStart) / (upperStart - lowerStart)) * (upperEnd - lowerEnd) + lowerEnd)
 
-def main(args=None):
+def lane_throttle_callback(msg : Float32):
+	global throttle
+	if is_manual == False:
+		throttle = msg.data
 
+location_topic = None
+def main(args=None):
+	global location_topic
 	rclpy.init(args=args)
 	node = Node("xbox_controller_node")
 
 	node.create_subscription(Joy, "/joy", lambda data: joy_callback(data, recording_pub), 10)
 	node.create_subscription(Float32, "/cv_steer", lane_following_callback, 10)
+	node.create_subscription(Float32, "/cv_throttle", lane_throttle_callback, 10)
 	node.create_subscription(String, '/transcript_topic', trasncript_callback, 10)
 	manual_pub = node.create_publisher(Int64, "/manual_throttle", 10)
 	manual_steering = node.create_publisher(Int64, "/manual_steering", 10)
 	recording_pub = node.create_publisher(String, "/recording_control", 10)
+	location_topic = node.create_publisher(String, "/location_topic", 10)
 
 	thread = threading.Thread(target=rclpy.spin, args=(node, ), daemon=True)
 	thread.start()
